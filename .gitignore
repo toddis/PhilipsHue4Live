@@ -1,0 +1,8 @@
+.idea/
+MaxPhilipsHue.iml
+PhilipsHue4Live.iml
+bridge_states.sqlite
+knowledge_base.sqlite
+known_bridges.sqlite
+out/
+whitelist_entries.sqlite
