@@ -299,7 +299,7 @@ public class HueConnector {
 
   static {
     // Load the huesdk native library before calling any SDK method
-    System.load("/Users/tmaegerle/Documents/Philips Hue Lights Project/HueSDK/HueSDK/Apple/MacOS/Java/libhuesdk.dylib");
+    System.load("/Users/tmaegerle/Documents/Philips Hue Lights Project/HueSDK4EDK/HueSDK/Apple/MacOS/Java/libhuesdk.dylib");
 
     // Configure the storage location and log level for the Hue SDK
     Persistence.setStorageLocation(MaxPhilipsHueObject.HUE_STORAGE_LOCATION, "Ableton");
