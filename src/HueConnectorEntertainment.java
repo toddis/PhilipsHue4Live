@@ -41,6 +41,7 @@ import com.philips.lighting.hue.sdk.wrapper.entertainment.animation.AnimationDel
 import com.philips.lighting.hue.sdk.wrapper.entertainment.animation.ConstantAnimation;
 import com.philips.lighting.hue.sdk.wrapper.entertainment.animation.TweenAnimation;
 import com.philips.lighting.hue.sdk.wrapper.entertainment.effect.AreaEffect;
+import com.philips.lighting.hue.sdk.wrapper.entertainment.effect.ColorAnimationEffect;
 import com.philips.lighting.hue.sdk.wrapper.entertainment.effect.Effect;
 import com.philips.lighting.hue.sdk.wrapper.entertainment.effect.ExplosionEffect;
 import com.philips.lighting.hue.sdk.wrapper.entertainment.effect.ManualEffect;
@@ -68,7 +69,7 @@ public class HueConnectorEntertainment {
 
   private static final int MAX_HUE = 65535;
 
-  private Bridge bridge;
+  public Bridge bridge;
   private Entertainment entertainment;
   private Group group;
 
@@ -88,13 +89,19 @@ public class HueConnectorEntertainment {
     EntertainmentReady
   }
 
+  // Directions for local: https://www.reddit.com/r/Hue/comments/65ui7k/how_can_i_connect_the_philips_hue_bridge_directly/
   public HueConnectorEntertainment() {
     bridge = null;
     entertainment = null;
 
     // Connect to a bridge or start the bridge discovery
     // String bridgeIp = getLastUsedBridgeIp();
-    String bridgeIp = "10.0.1.2";
+
+    // Dayton network
+//    String bridgeIp = "10.0.1.2";
+
+    // Local connection
+    String bridgeIp = "169.254.8.173";
     if (bridgeIp == null) {
       startBridgeDiscovery();
     } else {
@@ -155,7 +162,7 @@ public class HueConnectorEntertainment {
       if (returnCode == ReturnCode.SUCCESS) {
         bridgeDiscoveryResults = results;
 
-        updateUI(UIState.BridgeDiscoveryResults, "Found " + results.size() + " bridge(s) in the network.");
+        updateUI(UIState.BridgeDiscoveryResults, "Found " + results.size() + " bridge(s) in the network." + " " + results.get(0).getIP());
       } else if (returnCode == ReturnCode.STOPPED) {
         System.out.println(TAG + " - Bridge discovery stopped.");
       } else {
@@ -263,38 +270,38 @@ public class HueConnectorEntertainment {
     }
   };
 
-  /**
-   * Randomize the color of all lights in the bridge
-   * The SDK contains an internal processing queue that automatically throttles
-   * the rate of requests sent to the bridge, therefore it is safe to
-   * perform all light operations at once, even if there are dozens of lights.
-   */
-  private void randomizeLights() {
-    BridgeState bridgeState = bridge.getBridgeState();
-    List<LightPoint> lights = bridgeState.getLights();
-
-    Random rand = new Random();
-
-    for (final LightPoint light : lights) {
-      final LightState lightState = new LightState();
-
-      lightState.setHue(rand.nextInt(MAX_HUE));
-
-      light.updateState(lightState, BridgeConnectionType.LOCAL, new BridgeResponseCallback() {
-        @Override
-        public void handleCallback(Bridge bridge, ReturnCode returnCode, List<ClipResponse> list, List<HueError> errorList) {
-          if (returnCode == ReturnCode.SUCCESS) {
-            System.out.println(TAG + " - Changed hue of light " + light.getIdentifier() + " to " + lightState.getHue());
-          } else {
-            System.out.println(TAG + " - Error changing hue of light " + light.getIdentifier());
-            for (HueError error : errorList) {
-              System.out.println(TAG + " - " + error.toString());
-            }
-          }
-        }
-      });
-    }
-  }
+//  /**
+//   * Randomize the color of all lights in the bridge
+//   * The SDK contains an internal processing queue that automatically throttles
+//   * the rate of requests sent to the bridge, therefore it is safe to
+//   * perform all light operations at once, even if there are dozens of lights.
+//   */
+//  private void randomizeLights() {
+//    BridgeState bridgeState = bridge.getBridgeState();
+//    List<LightPoint> lights = bridgeState.getLights();
+//
+//    Random rand = new Random();
+//
+//    for (final LightPoint light : lights) {
+//      final LightState lightState = new LightState();
+//
+//      lightState.setHue(rand.nextInt(MAX_HUE));
+//
+//      light.updateState(lightState, BridgeConnectionType.LOCAL, new BridgeResponseCallback() {
+//        @Override
+//        public void handleCallback(Bridge bridge, ReturnCode returnCode, List<ClipResponse> list, List<HueError> errorList) {
+//          if (returnCode == ReturnCode.SUCCESS) {
+//            System.out.println(TAG + " - Changed hue of light " + light.getIdentifier() + " to " + lightState.getHue());
+//          } else {
+//            System.out.println(TAG + " - Error changing hue of light " + light.getIdentifier());
+//            for (HueError error : errorList) {
+//              System.out.println(TAG + " - " + error.toString());
+//            }
+//          }
+//        }
+//      });
+//    }
+//  }
 
   /**
    * Refresh the username in case it was created before entertainment was available
@@ -449,23 +456,12 @@ public class HueConnectorEntertainment {
   }
 
   public void colorAll() {
-    AreaEffect effect = new AreaEffect();
-    effect.addArea(new Area(-1, 1, 1, -1, "Test", false));
-    double r = Math.random();
-    double g = Math.random();
-    double b = Math.random();
-    Color c = normalizeRGB(r, g, b);
+    double r = Math.random() * 255;
+    double g = Math.random() * 255;
+    double b = Math.random() * 255;
+    double bri = Math.random() * 255;
 
-    System.out.println(String.format("Setting fixed color: r: %d, g: %d, b: %d", (int) c.getRed(), (int) c.getGreen(), (int) c.getBlue()));
-
-    effect.setFixedColor(new Color(r, g, b));
-
-
-    effect.enable();
-
-    entertainment.lockMixer();
-    entertainment.addEffect(effect);
-    entertainment.unlockMixer();
+    setColorForArea(-1, 1, 1, -1, r, g, b, bri);
   }
 
   public void setColorForArea(double topLeftX, double topLeftY, double bottomRightX, double bottomRightY,
@@ -474,7 +470,7 @@ public class HueConnectorEntertainment {
     effect.addArea(new Area(topLeftX, topLeftY, bottomRightX, bottomRightY, "Test", false));
     Color c = getColorFrom255RgbBrightness(r, g, b, brightness);
     effect.setFixedColor(c);
-    effect.setFixedOpacity(0.1);
+    effect.setFixedOpacity(1.0);
     effect.enable();
 
     entertainment.lockMixer();
@@ -482,107 +478,101 @@ public class HueConnectorEntertainment {
     entertainment.unlockMixer();
   }
 
-  public void draw(double topLeftX, double topLeftY, double bottomRightX, double bottomRightY,
-                   double transitionTime, double toR, double toG, double toB) {
-    // TODO: This starts the light at the current state of a random bulb in the area
+//  public void draw(double topLeftX, double topLeftY, double bottomRightX, double bottomRightY,
+//                   double transitionTime, double toR, double toG, double toB) {
+//    // TODO: This starts the light at the current state of a random bulb in the area
+//
+//    Color fromRGB = null;
+//    for (GroupLightLocation l : group.getLightLocations()) {
+//      if (l.getX() >= topLeftX && l.getX() <= bottomRightX && l.getY() <= topLeftY && l.getY() >= bottomRightY) {
+//        System.out.println("TEST " + l.getLightIdentifier());
+//        LightPoint light = bridge.getBridgeState().getLight(l.getLightIdentifier());
+//        HueColor.RGB rgb = light.getLightState().getColor().getRGB();
+//        fromRGB = normalizeRGB(rgb.r, rgb.b, rgb.g);
+//        System.out.println(String.format("Fetched color: r: %d, g: %d, b: %d", (int) fromRGB.getRed(), (int) fromRGB.getGreen(), (int) fromRGB.getBlue()));
+//        break;
+//      }
+//    }
+//    AreaEffect effect = new AreaEffect();
+//
+//    effect.addArea(new Area(-1, 1, 1, -1, "Test", false));
+//    effect.setColorAnimation(
+//        new TweenAnimation(fromRGB.getRed() / 255.0D, toR, transitionTime, TweenType.EaseInOutSine),
+//        new TweenAnimation(fromRGB.getBlue() / 255.0D, toG, transitionTime, TweenType.EaseInOutSine),
+//        new TweenAnimation(fromRGB.getGreen() / 255.0D, toB, transitionTime, TweenType.EaseInOutSine)
+//    );
+//
+//    effect.enable();
+//
+//    AreaEffect fixedColor = new AreaEffect();
+//    fixedColor.addArea(new Area(-1, 1, 1, -1, "Test2", false));
+//    fixedColor.setFixedColor(new Color(toR, toG, toB));
+//    fixedColor.enable();
+//
+//    entertainment.lockMixer();
+//    entertainment.addEffect(effect);
+//    entertainment.addEffect(fixedColor);
+//    entertainment.unlockMixer();
+//
+//
+//    entertainment.addEffect(effect);
+//
+//    entertainment.lockMixer();
+//    entertainment.addEffect(effect);
+//    entertainment.unlockMixer();
+//
+//  }
 
-    Color fromRGB = null;
-    for (GroupLightLocation l : group.getLightLocations()) {
-      if (l.getX() >= topLeftX && l.getX() <= bottomRightX && l.getY() <= topLeftY && l.getY() >= bottomRightY) {
-        System.out.println("TEST " + l.getLightIdentifier());
-        LightPoint light = bridge.getBridgeState().getLight(l.getLightIdentifier());
-        HueColor.RGB rgb = light.getLightState().getColor().getRGB();
-        fromRGB = normalizeRGB(rgb.r, rgb.b, rgb.g);
-        System.out.println(String.format("Fetched color: r: %d, g: %d, b: %d", (int) fromRGB.getRed(), (int) fromRGB.getGreen(), (int) fromRGB.getBlue()));
-        break;
-      }
-    }
-    AreaEffect effect = new AreaEffect();
+  public void strobeRandomLight(double holdTime, double r, double g, double b, double bri) {
+    List<GroupLightLocation> locations = group.getLightLocations();
+    GroupLightLocation randLocation = locations.get((int) (Math.random() * locations.size()));
+    strobe(holdTime, randLocation.getX(), randLocation.getY(), randLocation.getX(), randLocation.getY(), r, g, b, bri);
+  }
 
-    effect.addArea(new Area(-1, 1, 1, -1, "Test", false));
-    effect.setColorAnimation(
-        new TweenAnimation(fromRGB.getRed() / 255.0D, toR, transitionTime, TweenType.EaseInOutSine),
-        new TweenAnimation(fromRGB.getBlue() / 255.0D, toG, transitionTime, TweenType.EaseInOutSine),
-        new TweenAnimation(fromRGB.getGreen() / 255.0D, toB, transitionTime, TweenType.EaseInOutSine)
+  public void strobe(double holdTime, double topLeftX, double topLeftY, double bottomRightX, double bottomRightY,
+                     double r, double g, double b, double bri) {
+    AreaEffect on = getAreaEffectForCoordinates(topLeftX, topLeftY, bottomRightX, bottomRightY);
+    Color color = getColorFrom255RgbBrightness(r, g, b, bri);
+    on.setColorAnimation(
+        new ConstantAnimation(color.getRed(), holdTime * 1000),
+        new ConstantAnimation(color.getGreen(), holdTime * 1000),
+        new ConstantAnimation(color.getBlue(), holdTime * 1000)
+    );
+    playEffect(on);
+  }
+
+  public void cooldownStrobeRandomLight(double holdTime, double r, double g, double b, double bri) {
+    List<GroupLightLocation> locations = group.getLightLocations();
+    GroupLightLocation randLocation = locations.get((int) (Math.random() * locations.size()));
+    cooldownStrobe(holdTime, randLocation.getX(), randLocation.getY(), randLocation.getX(), randLocation.getY(), r, g, b, bri);
+  }
+
+  public void cooldownStrobe(double holdTime, double topLeftX, double topLeftY, double bottomRightX, double bottomRightY,
+                     double r, double g, double b, double bri) {
+    AreaEffect on = getAreaEffectForCoordinates(topLeftX, topLeftY, bottomRightX, bottomRightY);
+    Color color = getColorFrom255RgbBrightness(r, g, b, bri);
+
+    on.setColorAnimation(
+        new TweenAnimation(color.getRed(), 0,holdTime * 1000, TweenType.EaseInOutSine),
+        new TweenAnimation(color.getGreen(), 0,holdTime * 1000, TweenType.EaseInOutSine),
+        new TweenAnimation(color.getBlue(), 0,holdTime * 1000, TweenType.EaseInOutSine)
     );
 
+    playEffect(on);
+  }
+
+  private static AreaEffect getAreaEffectForCoordinates(double topLeftX, double topLeftY, double bottomRightX, double bottomRightY) {
+    AreaEffect effect = new AreaEffect();
+    effect.addArea(new Area(topLeftX, topLeftY, bottomRightX, bottomRightY, "Animation", false));
+    return effect;
+  }
+
+  private void playEffect(ColorAnimationEffect effect) {
+    effect.setFixedOpacity(1.0);
     effect.enable();
-
-    AreaEffect fixedColor = new AreaEffect();
-    fixedColor.addArea(new Area(-1, 1, 1, -1, "Test2", false));
-    fixedColor.setFixedColor(new Color(toR, toG, toB));
-    fixedColor.enable();
-
-    entertainment.lockMixer();
-    entertainment.addEffect(effect);
-    entertainment.addEffect(fixedColor);
-    entertainment.unlockMixer();
-
-
-    entertainment.addEffect(effect);
-
     entertainment.lockMixer();
     entertainment.addEffect(effect);
     entertainment.unlockMixer();
-
-  }
-
-  public void strobeRandomLight(double transitionTime) {
-    String lightId = group.getLightIds().get((int) (Math.random() * group.getLightIds().size()));
-
-    ManualEffect on = new ManualEffect();
-    on.setLightToColor(lightId, new Color(1.0, 1.0, 1.0));
-    on.enable();
-
-    ManualEffect off = new ManualEffect();
-    off.setLightToColor(lightId, new Color(0, 0, 0));
-    off.enable();
-
-    changeEffectAfterDelay(on, off, transitionTime);
-  }
-
-  public void strobe(double transitionTime) {
-    AreaEffect on = new AreaEffect();
-    on.addArea(new Area(-1, 1, 1, -1, "Test", false));
-    on.setFixedColor(new Color(1.0, 1.0, 1.0));
-    on.setFixedOpacity(1.0);
-    on.enable();
-
-    AreaEffect off = new AreaEffect();
-    off.addArea(new Area(-1, 1, 1, -1, "Test2", false));
-    off.setFixedColor(new Color(0, 0, 0));
-    off.setFixedOpacity(1.0);
-    off.enable();
-
-    changeEffectAfterDelay(on, off, transitionTime);
-  }
-
-  /*
-   delay is in seconds
-   */
-  private void changeEffectAfterDelay(Effect first, Effect second, double delay) {
-    entertainment.lockMixer();
-    entertainment.addEffect(first);
-    entertainment.unlockMixer();
-
-    new Thread(new Runnable() {
-      public void run() {
-        try {
-          Thread.sleep((long) (delay * 1000));
-          entertainment.lockMixer();
-          entertainment.addEffect(second);
-          entertainment.unlockMixer();
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
-    }).run();
-  }
-
-  // Takes 20, 30, 10 and turns it into 170, 255, 85
-  public static Color normalizeRGB(double r, double g, double b) {
-    double fraction = 255.0 / Math.max(Math.max(r, g), b);
-    return new Color(r * fraction, g * fraction, b * fraction);
   }
 
   public static Color getColorFrom255RgbBrightness(double r, double g, double b, double brightness) {

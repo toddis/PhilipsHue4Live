@@ -1,5 +1,6 @@
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.CompletableFuture;
 
 import com.cycling74.max.DataTypes;
 import com.cycling74.max.MaxObject;
@@ -24,10 +25,11 @@ public class MaxPhilipsHueEntertainmentObject extends MaxObject {
     ANIMATION_TOP_LEFT_X,
     ANIMATION_TOP_LEFT_Y,
     ANIMATION_BOTTOM_RIGHT_X,
-    ANTIMATION_BOTTOM_RIGHT_Y,
+    ANIMATION_BOTTOM_RIGHT_Y,
     ANIMATION_TIME,
     ANIMATION_TYPE,
     ANIMATION_BRIGHTNESS,
+    ANIMATION_AFFECT_SINGLE_RANDOM_LIGHT,
     ANIMATION_RED,
     ANIMATION_GREEN,
     ANIMATION_BLUE
@@ -54,7 +56,15 @@ public class MaxPhilipsHueEntertainmentObject extends MaxObject {
       DataTypes.INT,
       DataTypes.INT,
       DataTypes.INT,
+      DataTypes.INT,
   };
+
+  private enum AnimationType {
+    STROBE,
+    COOLDOWN_STROBE
+  }
+
+  private boolean lightsNeedRerender;
 
   public MaxPhilipsHueEntertainmentObject() {
     hue = new HueConnectorEntertainment();
@@ -67,6 +77,7 @@ public class MaxPhilipsHueEntertainmentObject extends MaxObject {
     declareOutlets(NO_OUTLETS);
     Timer timer = new Timer();
     timer.schedule(new Render(), 10000, 40);
+    lightsNeedRerender = true;
   }
 
 //  public void inlet(int input) {
@@ -78,29 +89,103 @@ public class MaxPhilipsHueEntertainmentObject extends MaxObject {
 
   public void inlet(float input) {
     int inletIndex = getInlet();
+    updateRenderState(inletIndex);
     inletVals[inletIndex] = input;
   }
 
+  private void updateRenderState(int index) {
+    if (
+          index == Inlet.TOP_LEFT_X.ordinal() ||
+          index == Inlet.TOP_LEFT_Y.ordinal() ||
+              index == Inlet.BOTTOM_RIGHT_X.ordinal() ||
+              index == Inlet.BOTTOM_RIGHT_Y.ordinal() ||
+              index == Inlet.RED.ordinal() ||
+              index == Inlet.GREEN.ordinal() ||
+              index == Inlet.BLUE.ordinal() ||
+              index == Inlet.BRIGHTNESS.ordinal()
+        ) {
+      lightsNeedRerender = true;
+    }
+  }
+
   public void bang() {
-//    System.out.printf("time: %.2f, r: %d, g: %d, b: %d, bri: %d",
-//        inletVals[Inlet.ANIMATION_TIME.ordinal()],
-//        inletVals[Inlet.ANIMATION_RED.ordinal()],
-//        inletVals[Inlet.ANIMATION_GREEN.ordinal()],
-//        inletVals[Inlet.ANIMATION_BLUE.ordinal()],
-//        inletVals[Inlet.ANIMATION_BRIGHTNESS.ordinal()]
-//        );
-    hue.playExplosionEffect(
-        inletVals[Inlet.ANIMATION_TIME.ordinal()].floatValue(),
-        inletVals[Inlet.ANIMATION_RED.ordinal()].intValue(),
-        inletVals[Inlet.ANIMATION_GREEN.ordinal()].intValue(),
-        inletVals[Inlet.ANIMATION_BLUE.ordinal()].intValue(),
-        inletVals[Inlet.ANIMATION_BRIGHTNESS.ordinal()].intValue()
-    );
+    CompletableFuture.runAsync(() -> {
+      runAnimation();
+    });
+  }
+
+  private void runAnimation() {
+    boolean singleRandomLight = inletVals[Inlet.ANIMATION_AFFECT_SINGLE_RANDOM_LIGHT.ordinal()].intValue() == 1;
+    final AnimationType animationType = AnimationType.values()[inletVals[Inlet.ANIMATION_TYPE.ordinal()].intValue()];
+    if (singleRandomLight) {
+      switch (animationType) {
+        case STROBE:
+          hue.strobeRandomLight(
+              inletVals[Inlet.ANIMATION_TIME.ordinal()].floatValue(),
+              inletVals[Inlet.ANIMATION_RED.ordinal()].intValue(),
+              inletVals[Inlet.ANIMATION_GREEN.ordinal()].intValue(),
+              inletVals[Inlet.ANIMATION_BLUE.ordinal()].intValue(),
+              inletVals[Inlet.ANIMATION_BRIGHTNESS.ordinal()].intValue()
+          );
+          break;
+        case COOLDOWN_STROBE:
+          hue.cooldownStrobeRandomLight(
+              inletVals[Inlet.ANIMATION_TIME.ordinal()].floatValue(),
+              inletVals[Inlet.ANIMATION_RED.ordinal()].intValue(),
+              inletVals[Inlet.ANIMATION_GREEN.ordinal()].intValue(),
+              inletVals[Inlet.ANIMATION_BLUE.ordinal()].intValue(),
+              inletVals[Inlet.ANIMATION_BRIGHTNESS.ordinal()].intValue()
+          );
+          break;
+        default:
+          break;
+      }
+    } else {
+      switch (animationType) {
+        case STROBE:
+          hue.strobe(
+              inletVals[Inlet.ANIMATION_TIME.ordinal()].floatValue(),
+              inletVals[Inlet.ANIMATION_TOP_LEFT_X.ordinal()].floatValue(),
+              inletVals[Inlet.ANIMATION_TOP_LEFT_Y.ordinal()].floatValue(),
+              inletVals[Inlet.ANIMATION_BOTTOM_RIGHT_X.ordinal()].floatValue(),
+              inletVals[Inlet.ANIMATION_BOTTOM_RIGHT_Y.ordinal()].floatValue(),
+              inletVals[Inlet.ANIMATION_RED.ordinal()].intValue(),
+              inletVals[Inlet.ANIMATION_GREEN.ordinal()].intValue(),
+              inletVals[Inlet.ANIMATION_BLUE.ordinal()].intValue(),
+              inletVals[Inlet.ANIMATION_BRIGHTNESS.ordinal()].intValue()
+          );
+          break;
+        case COOLDOWN_STROBE:
+          hue.cooldownStrobe(
+              inletVals[Inlet.ANIMATION_TIME.ordinal()].floatValue(),
+              inletVals[Inlet.ANIMATION_TOP_LEFT_X.ordinal()].floatValue(),
+              inletVals[Inlet.ANIMATION_TOP_LEFT_Y.ordinal()].floatValue(),
+              inletVals[Inlet.ANIMATION_BOTTOM_RIGHT_X.ordinal()].floatValue(),
+              inletVals[Inlet.ANIMATION_BOTTOM_RIGHT_Y.ordinal()].floatValue(),
+              inletVals[Inlet.ANIMATION_RED.ordinal()].intValue(),
+              inletVals[Inlet.ANIMATION_GREEN.ordinal()].intValue(),
+              inletVals[Inlet.ANIMATION_BLUE.ordinal()].intValue(),
+              inletVals[Inlet.ANIMATION_BRIGHTNESS.ordinal()].intValue()
+          );
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  private void printAllInlets() {
+    StringBuilder res = new StringBuilder();
+    for (int i = 0; i < inletVals.length; i++) {
+      res.append((Inlet.values())[i] + ": " + String.format("%.2f", inletVals[i].floatValue()) + "\n");
+    }
+    System.out.println(res);
   }
 
   private class Render extends TimerTask {
     public void run() {
-      if (inletVals[Inlet.RENDER.ordinal()].intValue() == 1) {
+      if (inletVals[Inlet.RENDER.ordinal()].intValue() == 1 && lightsNeedRerender) {
+        lightsNeedRerender = false;
         hue.setColorForArea(
             inletVals[Inlet.TOP_LEFT_X.ordinal()].floatValue(),
             inletVals[Inlet.TOP_LEFT_Y.ordinal()].floatValue(),
