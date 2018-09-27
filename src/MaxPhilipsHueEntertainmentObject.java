@@ -1,9 +1,12 @@
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 import com.cycling74.max.DataTypes;
 import com.cycling74.max.MaxObject;
+
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 public class MaxPhilipsHueEntertainmentObject extends MaxObject {
   public static final String HUE_STORAGE_LOCATION = "/Users/tmaegerle/Music/Ableton/User Library/Presets/Instruments/Max Instrument/NewHueSdkMaxStorage";
@@ -66,6 +69,12 @@ public class MaxPhilipsHueEntertainmentObject extends MaxObject {
 
   private boolean lightsNeedRerender;
 
+  private static final ScheduledExecutorService RENDER_THREAD_POOL = Executors.newScheduledThreadPool(5);
+  private static final Executor FX_RENDER_THREAD_POOL = Executors.newFixedThreadPool(5);
+
+  private static final int RENDER_INIT_DELAY_MS = 5000;
+  private static final int RENDER_PERIOD_MS = 38;
+
   public MaxPhilipsHueEntertainmentObject() {
     hue = new HueConnectorEntertainment();
     inletVals = new Number[INLET_TYPES.length];
@@ -75,9 +84,8 @@ public class MaxPhilipsHueEntertainmentObject extends MaxObject {
 
     declareInlets(INLET_TYPES);
     declareOutlets(NO_OUTLETS);
-    Timer timer = new Timer();
-    timer.schedule(new Render(), 10000, 40);
     lightsNeedRerender = true;
+    scheduleRenderCalls();
   }
 
 //  public void inlet(int input) {
@@ -111,7 +119,7 @@ public class MaxPhilipsHueEntertainmentObject extends MaxObject {
   public void bang() {
     CompletableFuture.runAsync(() -> {
       runAnimation();
-    });
+    }, FX_RENDER_THREAD_POOL);
   }
 
   private void runAnimation() {
@@ -182,21 +190,22 @@ public class MaxPhilipsHueEntertainmentObject extends MaxObject {
     System.out.println(res);
   }
 
-  private class Render extends TimerTask {
-    public void run() {
-      if (inletVals[Inlet.RENDER.ordinal()].intValue() == 1 && lightsNeedRerender) {
-        lightsNeedRerender = false;
-        hue.setColorForArea(
-            inletVals[Inlet.TOP_LEFT_X.ordinal()].floatValue(),
-            inletVals[Inlet.TOP_LEFT_Y.ordinal()].floatValue(),
-            inletVals[Inlet.BOTTOM_RIGHT_X.ordinal()].floatValue(),
-            inletVals[Inlet.BOTTOM_RIGHT_Y.ordinal()].floatValue(),
-            inletVals[Inlet.RED.ordinal()].intValue(),
-            inletVals[Inlet.GREEN.ordinal()].intValue(),
-            inletVals[Inlet.BLUE.ordinal()].intValue(),
-            inletVals[Inlet.BRIGHTNESS.ordinal()].intValue()
-        );
-      }
-    }
+  private void scheduleRenderCalls() {
+    RENDER_THREAD_POOL.scheduleAtFixedRate(() -> {
+        if (inletVals[Inlet.RENDER.ordinal()].intValue() == 1 && lightsNeedRerender) {
+          lightsNeedRerender = false;
+          hue.setColorForArea(
+              inletVals[Inlet.TOP_LEFT_X.ordinal()].floatValue(),
+              inletVals[Inlet.TOP_LEFT_Y.ordinal()].floatValue(),
+              inletVals[Inlet.BOTTOM_RIGHT_X.ordinal()].floatValue(),
+              inletVals[Inlet.BOTTOM_RIGHT_Y.ordinal()].floatValue(),
+              inletVals[Inlet.RED.ordinal()].intValue(),
+              inletVals[Inlet.GREEN.ordinal()].intValue(),
+              inletVals[Inlet.BLUE.ordinal()].intValue(),
+              inletVals[Inlet.BRIGHTNESS.ordinal()].intValue()
+          );
+        }
+    }, RENDER_INIT_DELAY_MS, RENDER_PERIOD_MS, MILLISECONDS);
   }
+
 }
