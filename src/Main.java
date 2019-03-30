@@ -24,10 +24,9 @@ import com.philips.lighting.hue.sdk.wrapper.utilities.HueColor;
 
 public class Main {
 
-    // Streaming credentials:
+    // Streaming credentials (put request to <ip-address>/api). Ip for local is 169.254.8.173
     // {
-    //     "devicetype":"ableton#mymacbook",
-    //     "generateclientkey":true
+    //     "devicetype":"ableton#mymacbook"
     // }
 
         // [

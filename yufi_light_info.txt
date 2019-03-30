@@ -1,0 +1,116 @@
+
+// http://10.0.1.2/debug/clip.html (169.254.8.173 for local)
+// Streaming credentials (POST request to <ip-address>/api). Ip for local is 169.254.8.173
+// {
+//     "devicetype":"ableton#mymacbook"
+// }
+// 	{
+// 		"success": {
+// 			"username": "WZtGoHPHJvRmKFAJ6qOMfAg6huflerOxgVXG2rlB"
+// 		}
+// 	}
+//
+// do PUT on /api/WZtGoHPHJvRmKFAJ6qOMfAg6huflerOxgVXG2rlB/groups/3
+// with body like:
+// {
+//	"lights": ["1", "2"]
+//  "locations": ...
+//}
+
+{
+	"3": {
+		"name": "Yufi",
+		"lights": [
+			"13",
+			"10",
+			"15",
+			"16",
+			"12",
+			"14",
+			"11",
+			"18",
+			"19",
+			"20"
+		],
+		"sensors": [],
+		"type": "Entertainment",
+		"state": {
+			"all_on": false,
+			"any_on": true
+		},
+		"recycle": false,
+		"class": "TV",
+		"stream": {
+			"proxymode": "auto",
+			"proxynode": "/lights/16",
+			"active": false,
+			"owner": null
+		},
+		"locations": {
+			"10": [
+				1,
+				-1,
+				0
+			],
+			"11": [
+				0.25,
+				1,
+				0
+			],
+			"12": [
+				-0.25,
+				1,
+				0
+			],
+			"13": [
+				-1,
+				-1,
+				0
+			],
+			"14": [
+				0,
+				1,
+				0
+			],
+			"15": [
+				0.33,
+				-0.33,
+				0
+			],
+			"16": [
+				0,
+				0,
+				0
+			],
+			"18": [
+				-0.33,
+				-0.33,
+				0
+			],
+			"19": [
+				0.66,
+				-0.66,
+				0
+			],
+			"20": [
+				-0.66,
+				-0.66,
+				0
+			]
+		},
+		"action": {
+			"on": false,
+			"bri": 0,
+			"hue": 0,
+			"sat": 0,
+			"effect": "none",
+			"xy": [
+				0,
+				0
+			],
+			"ct": 0,
+			"alert": "none",
+			"colormode": "hs"
+		}
+	}
+}
