@@ -17,6 +17,7 @@ import com.philips.lighting.hue.sdk.wrapper.domain.device.DeviceState;
 import com.philips.lighting.hue.sdk.wrapper.domain.device.light.LightConfiguration;
 import com.philips.lighting.hue.sdk.wrapper.domain.device.light.LightPoint;
 import com.philips.lighting.hue.sdk.wrapper.domain.device.light.LightState;
+import com.philips.lighting.hue.sdk.wrapper.domain.device.light.LightStateImpl;
 import com.philips.lighting.hue.sdk.wrapper.domain.resource.Group;
 import com.philips.lighting.hue.sdk.wrapper.domain.resource.GroupLightLocation;
 import com.philips.lighting.hue.sdk.wrapper.domain.resource.GroupType;
@@ -64,8 +65,8 @@ public class Main {
     private static final int MAX_HUE = 65535;
 
     public static void main(String[] args) throws Exception {
-        // HueConnectorEntertainment h = new HueConnectorEntertainment();
-        HueConnector h = new HueConnector();
+         HueConnectorEntertainment h = new HueConnectorEntertainment();
+//        HueConnector h = new HueConnector();
         Thread.sleep(10000);
 //        System.out.println("Before:");
 //        printAllDeviceIds(h.bridge);
@@ -232,7 +233,7 @@ public class Main {
             lightConfiguration.getModelIdentifier(),
             lightConfiguration.getSwVersion());
 
-        LightState lightState = new LightState();
+        LightState lightState = new LightStateImpl();
         lightState.setBrightness(255);
         lightState.setXY(color.getXY().x, color.getXY().y);
         light.updateState(lightState);

@@ -10,17 +10,15 @@ import com.philips.lighting.hue.sdk.wrapper.connection.BridgeStateUpdatedCallbac
 import com.philips.lighting.hue.sdk.wrapper.connection.BridgeStateUpdatedEvent;
 import com.philips.lighting.hue.sdk.wrapper.connection.ConnectionEvent;
 import com.philips.lighting.hue.sdk.wrapper.discovery.BridgeDiscovery;
-import com.philips.lighting.hue.sdk.wrapper.discovery.BridgeDiscoveryCallback;
+import com.philips.lighting.hue.sdk.wrapper.discovery.BridgeDiscoveryImpl;
 import com.philips.lighting.hue.sdk.wrapper.discovery.BridgeDiscoveryResult;
 import com.philips.lighting.hue.sdk.wrapper.domain.Bridge;
 import com.philips.lighting.hue.sdk.wrapper.domain.BridgeBuilder;
-import com.philips.lighting.hue.sdk.wrapper.domain.BridgeState;
 import com.philips.lighting.hue.sdk.wrapper.domain.HueError;
 import com.philips.lighting.hue.sdk.wrapper.domain.ReturnCode;
 import com.philips.lighting.hue.sdk.wrapper.domain.SupportedFeature;
 import com.philips.lighting.hue.sdk.wrapper.domain.clip.ClipResponse;
 import com.philips.lighting.hue.sdk.wrapper.domain.device.light.LightPoint;
-import com.philips.lighting.hue.sdk.wrapper.domain.device.light.LightState;
 import com.philips.lighting.hue.sdk.wrapper.domain.resource.Group;
 import com.philips.lighting.hue.sdk.wrapper.domain.resource.GroupClass;
 import com.philips.lighting.hue.sdk.wrapper.domain.resource.GroupLightLocation;
@@ -30,24 +28,18 @@ import com.philips.lighting.hue.sdk.wrapper.domain.resource.ProxyMode;
 import com.philips.lighting.hue.sdk.wrapper.entertainment.Area;
 import com.philips.lighting.hue.sdk.wrapper.entertainment.Color;
 import com.philips.lighting.hue.sdk.wrapper.entertainment.Entertainment;
-import com.philips.lighting.hue.sdk.wrapper.entertainment.Callback;
 import com.philips.lighting.hue.sdk.wrapper.entertainment.Message;
 import com.philips.lighting.hue.sdk.wrapper.entertainment.Observer;
 import com.philips.lighting.hue.sdk.wrapper.entertainment.StartCallback;
 import com.philips.lighting.hue.sdk.wrapper.entertainment.Location;
 import com.philips.lighting.hue.sdk.wrapper.entertainment.TweenType;
-import com.philips.lighting.hue.sdk.wrapper.entertainment.animation.Animation;
-import com.philips.lighting.hue.sdk.wrapper.entertainment.animation.AnimationDelegate;
 import com.philips.lighting.hue.sdk.wrapper.entertainment.animation.ConstantAnimation;
 import com.philips.lighting.hue.sdk.wrapper.entertainment.animation.TweenAnimation;
 import com.philips.lighting.hue.sdk.wrapper.entertainment.effect.AreaEffect;
 import com.philips.lighting.hue.sdk.wrapper.entertainment.effect.ColorAnimationEffect;
-import com.philips.lighting.hue.sdk.wrapper.entertainment.effect.Effect;
 import com.philips.lighting.hue.sdk.wrapper.entertainment.effect.ExplosionEffect;
-import com.philips.lighting.hue.sdk.wrapper.entertainment.effect.ManualEffect;
 import com.philips.lighting.hue.sdk.wrapper.knownbridges.KnownBridge;
 import com.philips.lighting.hue.sdk.wrapper.knownbridges.KnownBridges;
-import com.philips.lighting.hue.sdk.wrapper.utilities.HueColor;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -58,7 +50,7 @@ import java.util.Random;
 public class HueConnectorEntertainment {
   static {
     // Load the huesdk native library before calling any SDK method
-    System.load("/Users/tmaegerle/Documents/Philips Hue Lights Project/HueSDK4EDK/HueSDK/Apple/MacOS/Java/libhuesdk.dylib");
+    System.load("/Users/tmaegerle/Documents/Philips Hue Lights Project/PhilipsHue4Live/HueSDK/Apple/MacOS/Java/libhuesdk.dylib");
 
     // Configure the storage location and log level for the Hue SDK
     Persistence.setStorageLocation(MaxPhilipsHueObject.HUE_STORAGE_LOCATION, "Ableton");
@@ -135,11 +127,13 @@ public class HueConnectorEntertainment {
   private void startBridgeDiscovery() {
     disconnectFromBridge();
 
-    bridgeDiscovery = new BridgeDiscovery();
-    bridgeDiscovery.search(BridgeDiscovery.BridgeDiscoveryOption.UPNP, bridgeDiscoveryCallback);
+    bridgeDiscovery = new BridgeDiscoveryImpl();
+    // ALL Include [UPNP, IPSCAN, NUPNP, MDNS] but in some nets UPNP, NUPNP and MDNS is not working properly
+    bridgeDiscovery.search(BridgeDiscovery.Option.ALL, bridgeDiscoveryCallback);
 
     updateUI(UIState.BridgeDiscoveryRunning, "Scanning the network for hue bridges...");
   }
+
 
   /**
    * Stops the bridge discovery if it is still running
@@ -154,16 +148,16 @@ public class HueConnectorEntertainment {
   /**
    * The callback that receives the results of the bridge discovery
    */
-  private BridgeDiscoveryCallback bridgeDiscoveryCallback = new BridgeDiscoveryCallback() {
+  private BridgeDiscovery.Callback bridgeDiscoveryCallback = new BridgeDiscovery.Callback() {
     @Override
-    public void onFinished(final List<BridgeDiscoveryResult> results, final ReturnCode returnCode) {
+    public void onFinished(final List<BridgeDiscoveryResult> results, final BridgeDiscovery.ReturnCode returnCode) {
       // Set to null to prevent stopBridgeDiscovery from stopping it
       bridgeDiscovery = null;
-      if (returnCode == ReturnCode.SUCCESS) {
+      if (returnCode == BridgeDiscovery.ReturnCode.SUCCESS) {
         bridgeDiscoveryResults = results;
 
-        updateUI(UIState.BridgeDiscoveryResults, "Found " + results.size() + " bridge(s) in the network." + " " + results.get(0).getIP());
-      } else if (returnCode == ReturnCode.STOPPED) {
+        updateUI(UIState.BridgeDiscoveryResults, "Found " + results.size() + " bridge(s) in the network.");
+      } else if (returnCode == BridgeDiscovery.ReturnCode.STOPPED) {
         System.out.println(TAG + " - Bridge discovery stopped.");
       } else {
         updateUI(UIState.Idle, "Error doing bridge discovery: " + returnCode);
